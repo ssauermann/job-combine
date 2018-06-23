@@ -7,9 +7,8 @@ Supported format specifiers are:
     %M for minutes
     %S for seconds
 """
-from datetime import timedelta
-
 import re
+from datetime import timedelta
 
 
 def str_to_timedelta(time_str, *formats):
@@ -25,7 +24,7 @@ def str_to_timedelta(time_str, *formats):
         pattern = pattern.replace('%H', '(?P<h>[0-9]+)')
         pattern = pattern.replace('%M', '(?P<m>[0-9]+)')
         pattern = pattern.replace('%S', '(?P<s>[0-9]+)')
-        match = re.match(pattern, time_str)
+        match = re.match(r'^' + pattern + r'$', time_str)
 
         if match is None:
             continue
