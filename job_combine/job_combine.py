@@ -140,12 +140,12 @@ def partition(jobs, max_time=timedelta.max, min_time=timedelta(), parallel=1, br
         desc_jobs = sorted(jobs, key=lambda x: x.time, reverse=True)
 
         # create each partition and fill them with the n largest items
-        for i in range(target_n):
+        for _ in range(target_n):
             part.append([desc_jobs.pop(0)])
 
         # iterate over the remaining items and fill the largest item into the smallest partition
         for j in desc_jobs:
-            smallest_part = min(part, key=lambda x: cjob.sum_times(x))
+            smallest_part = min(part, key=cjob.sum_times)
             smallest_part.append(j)
 
         # validate time constraints
