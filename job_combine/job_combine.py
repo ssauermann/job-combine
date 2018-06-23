@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import argparse
+from __future__ import absolute_import, division, print_function
+
 import os
 import pickle
+import sys
 from collections import defaultdict
 from datetime import timedelta
 from difflib import SequenceMatcher
@@ -10,6 +12,14 @@ from os import path
 
 from job_combine.cluster import job as cjob
 from job_combine.utils import paths, time_parser
+
+try:
+    import argparse
+except ImportError:
+    print("argparse module not available; either install it "
+          "(https://pypi.python.org/pypi/argparse), or "
+          "switch to a Python version that includes it.")
+    sys.exit(1)
 
 
 def read_args():
