@@ -1,7 +1,6 @@
 """Job that can be dispatched on a cluster"""
-from datetime import timedelta
-
 import re
+from datetime import timedelta
 from os import path
 
 from job_combine.cluster import managers as wlm
@@ -11,6 +10,17 @@ from job_combine.utils import paths, time_parser
 class Job:
 
     def __init__(self, file, name, directory, time, stdout, stderr, params, manager_name):
+        """
+        Create a new job object representing a workload manager job file
+        :param file: Name of the job file
+        :param name: Name of the job
+        :param directory: Path to the job file directory
+        :param time: Reserved time for this job as timedelta
+        :param stdout: File to pipe the standard out stream into
+        :param stderr: File to pipe the standard error stream into
+        :param params: list of (key, value) tuples for every other job parameter
+        :param manager_name: The workload manager this job file is for
+        """
         self.file = file
         self.name = name
         self.directory = directory
@@ -24,10 +34,13 @@ class Job:
         return hash((self.manager_name, self.params))
 
     def __eq__(self, other):
-        return (self.manager_name, self.params) == (other.manager, other.params)
+        return (self.manager_name, self.params) == (other.manager_name, other.params)
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __repr__(self):
+        return '(%s, %s)' % (self.name, str(self.time))
 
     def manager(self):
         return wlm.managers[self.manager_name]

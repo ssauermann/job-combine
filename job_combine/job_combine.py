@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import argparse
+import os
 import pickle
 from collections import defaultdict
 from datetime import timedelta
 from difflib import SequenceMatcher
-
-import os
 from os import path
 
 from job_combine.cluster import job as cjob
@@ -89,7 +88,7 @@ def store(file, dic):
     else:
         file_abs = file
     with open(file_abs, 'wb+') as f:
-        pickle.dump(dic, f)
+        pickle.dump(dic, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def combine(jobs):
@@ -128,21 +127,8 @@ def combine(jobs):
     return c_job, c_script
 
 
-def partition(jobs, max_time, min_time, parallel, break_max=True):
-    assert len(jobs) > 0
-
-    time_format = '%H:%M:%S'
-
-    if max_time is None:
-        tmax = timedelta.max
-    else:
-        tmax = time_parser.str_to_timedelta(max_time, time_format)
-    if min_time is None:
-        tmin = timedelta()
-    else:
-        tmin = time_parser.str_to_timedelta(min_time, time_format)
-
-    if tmax < tmin:
+def partition(jobs, max_time=timedelta.max, min_time=timedelta(), parallel=1, break_max=True):
+    if max_time < min_time:
         raise ValueError('Max time has to be larger than min time')
 
     print('\nPartitioning results for %i combinable scripts:' % len(jobs))
@@ -151,7 +137,7 @@ def partition(jobs, max_time, min_time, parallel, break_max=True):
     def do_partition(target_n, previous=-1):
         part = []
 
-        desc_jobs = sorted(jobs, key=lambda x: x.time)
+        desc_jobs = sorted(jobs, key=lambda x: x.time, reverse=True)
 
         # create each partition and fill them with the n largest items
         for i in range(target_n):
@@ -165,7 +151,7 @@ def partition(jobs, max_time, min_time, parallel, break_max=True):
         # validate time constraints
         for p in part:
             time = cjob.sum_times(p)
-            if time > tmax:
+            if time > max_time:
                 if target_n >= len(jobs):
                     print('WARNING: Could not fulfill max_time = %s constraint as there exists a single script with a'
                           ' longer time.' % max_time)
@@ -175,7 +161,7 @@ def partition(jobs, max_time, min_time, parallel, break_max=True):
                           ' Breaking the max_time = %s constraint.' % max_time)
                     break
                 return do_partition(target_n + 1, target_n)  # need more partitions
-            elif time < tmin:
+            elif time < min_time:
                 if target_n == 1:
                     print(
                         'WARNING: Could not fulfill min_time = %s constraint as there are not enough combinable scripts'
@@ -195,7 +181,7 @@ def partition(jobs, max_time, min_time, parallel, break_max=True):
     if len(part_result) > parallel > 1:
         print('WARNING: Could not partition the jobs to less than %i partitions. Try relaxing the max_time'
               ' constraint.' % parallel)
-    times = [time_parser.str_from_timedelta(cjob.sum_times(p), time_format) for p in part_result]
+    times = [str(cjob.sum_times(p)) for p in part_result]
     print('%i partitions with times: %s' % (len(part_result), ', '.join(times)))
 
     return part_result
@@ -206,11 +192,21 @@ def queue(args):
 
     dir_counter = 0
 
+    time_format = '%H:%M:%S'
+    if args.max_time is None:
+        max_time = timedelta.max
+    else:
+        max_time = time_parser.str_to_timedelta(args.max_time, time_format)
+    if args.min_time is None:
+        min_time = timedelta()
+    else:
+        min_time = time_parser.str_to_timedelta(args.min_time, time_format)
+
     print('Combining scripts...')
 
     for similar_jobs in current_jobs.values():
         # partition jobs based on constraints
-        part = partition(similar_jobs, args.max_time, args.min_time, args.parallel, args.break_max)
+        part = partition(similar_jobs, max_time, min_time, args.parallel, args.break_max)
         # combine scripts in same partition
         combined = map(combine, part)
 
