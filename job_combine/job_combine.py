@@ -26,8 +26,8 @@ def read_args():
     parser = argparse.ArgumentParser(description='Combines multiple job files into a single job.')
     subparsers = parser.add_subparsers(help='Select the operation to perform')
 
-    parser_queue = subparsers.add_parser('queue', help='Combines currently stored jobs to as few as possible job files '
-                                                       'and dispatches them to the queue of the workload manager')
+    parser_queue = subparsers.add_parser('queue',
+                                         help='Performs the partitioning and combination of the currently stored jobs')
     parser_add = subparsers.add_parser('add', help='Add a job for combination with the other stored jobs')
     parser_status = subparsers.add_parser('status', help='Displays information about the currently stored jobs and'
                                                          ' which can be combined')
@@ -105,7 +105,7 @@ def combine(jobs):
 
     # all scripts have params and manager in common or they would not be combinable
     params = jobs[0].params
-    manager = jobs[0].manager
+    manager = jobs[0].manager_name
 
     # properties of the combined job
     time = cjob.sum_times(jobs)

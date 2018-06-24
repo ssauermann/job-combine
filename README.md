@@ -38,6 +38,7 @@ See the full help by executing `job-combine -h` or `job-combine <mode> -h`
 4. Queue the job files that can be found in `~/combined/[00-49]/` manually or execute the same command as in 2. with
  `--dispatch` as additional parameter.
 5. The output files of the original jobs can be found where they would be if they were executed directly.
+6. Clear storage for the next execution: `job-combine -s ~/job.storage clear`
 
 ## What scripts can be combined?
 Scripts may differ in:

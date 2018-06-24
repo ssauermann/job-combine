@@ -3,7 +3,7 @@ import re
 from datetime import timedelta
 from os import path
 
-from job_combine.cluster import managers as wlm
+from job_combine.cluster.managers import managers
 from job_combine.utils import paths, time_parser
 
 
@@ -12,7 +12,7 @@ class Job:
     def __init__(self, file, name, directory, time, stdout, stderr, params, manager_name):
         """
         Create a new job object representing a workload manager job file
-        :param file: Name of the job file
+        :param file: Path to the job file
         :param name: Name of the job
         :param directory: Path to the job file directory
         :param time: Reserved time for this job as timedelta
@@ -40,10 +40,11 @@ class Job:
         return not (self == other)
 
     def __repr__(self):
-        return '(%s, %s)' % (self.name, str(self.time))
+        return '(%s, %s, %s, %s, %s, %s, %s)' \
+               % (self.name, str(self.time), self.file, self.directory, self.stdout, self.stderr, self.manager_name)
 
     def manager(self):
-        return wlm.managers[self.manager_name]
+        return managers[self.manager_name]
 
     def to_string(self):
         m = self.manager()
@@ -81,7 +82,7 @@ class Job:
         """
         if workload_manager is not None:
             try:
-                manager = wlm.managers[workload_manager]
+                manager = managers[workload_manager]
                 print('Using workload manager: %s' % manager.name)
             except KeyError:
                 raise ValueError('Workload manager not supported: %s' % workload_manager)
@@ -105,7 +106,7 @@ class Job:
 
                     # infer workload manager via directive
                     if manager is None:
-                        for wm in wlm.managers.values():
+                        for wm in managers.values():
                             if line.startswith(wm.directive):
                                 manager = wm
                                 print('Inferred workload manager: %s' % manager.name)
@@ -174,4 +175,4 @@ def sum_times(job_list):
 
 
 def available_managers():
-    return wlm.managers.keys()
+    return managers.keys()
