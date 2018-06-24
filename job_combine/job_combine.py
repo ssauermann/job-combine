@@ -57,9 +57,8 @@ def read_args():
     parser_queue.add_argument('-t', '--max-time', help='No combined job will have a runtime longer than this value')
     parser_queue.add_argument('-m', '--min-time', help='No combined job will have a runtime with less than this value')
     parser_queue.add_argument('-p', '--parallel', default=1, type=int,
-                              help='Tries to distribute the jobs equally to `p` scripts. Scripts that can not be'
-                                   ' combined may increase and constraints may reduce the number of created'
-                                   ' script files. [default: %(default)i]')
+                              help='Tries to distribute the jobs equally to `p` scripts. Constraints may increase or '
+                                   'reduce the number of created script files. [default: %(default)i]')
     parser_queue.add_argument('--break-max', action='store_true',
                               help='Break the max_time constraint instead of the min_time constraint if not both can be'
                                    ' fulfilled at the same time.')
