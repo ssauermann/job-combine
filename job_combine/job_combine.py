@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
@@ -123,7 +123,7 @@ def combine(jobs):
     c_job = cjob.Job(None, name, None, time, stdout, stderr, params, manager)
 
     # create script for combined job that calls every original script in its working directory
-    c_script = ''
+    c_script = 'cwd=$(pwd)'
     for job in jobs:
         c_script += 'cd "%s"\n' % job.directory  # change to working directory
         c_script += '"%s"' % job.file  # execute script (file path is absolute)
@@ -131,6 +131,7 @@ def combine(jobs):
             c_script += ' >%s' % stdout  # pipe stdout
         if job.stderr is not None:
             c_script += ' 2>%s' % stderr  # pipe stderr
+        c_script += 'echo %s >> $(cwd)/done' % job.file
         c_script += '\n\n'
 
     return c_job, c_script
@@ -214,6 +215,9 @@ def queue(args):
     print('Combining scripts...')
 
     for similar_jobs in current_jobs.values():
+        if len(similar_jobs) == 0:
+            continue
+
         # partition jobs based on constraints
         part = partition(similar_jobs, max_time, min_time, args.parallel, args.break_max)
         # combine scripts in same partition
@@ -248,10 +252,38 @@ def add(args):
 
     job = cjob.Job.from_file(args.job_file, args.workload_manager)
     os.chmod(job.file, os.stat(job.file).st_mode | 0o111)  # set script executable for everyone
-    current_jobs[job].append(job)
+    current_jobs[job.key()].append(job)
 
     store(args.storage_file, current_jobs)
     print('Added job successfully.')
+
+
+def remove(args):
+    current_jobs = load(args.storage_file)
+
+    job = cjob.Job.from_file(args.job_file, args.workload_manager)
+    current_jobs[job.key()].remove(job)
+
+    store(args.storage_file, current_jobs)
+    print('Removed job successfully.')
+
+
+def remove_completed(args):
+    current_jobs = load(args.storage_file)
+    script_dir = args.directory
+
+    completed_scripts = []
+    for root, dirs, files in os.walk(script_dir):
+        for f in files:
+            if f == 'done':
+                completed_scripts += open(path.join(root, f)).readlines()
+
+    for script_f in completed_scripts:
+        job = cjob.Job.from_file(script_f, args.workload_manager)
+        current_jobs[job.key()].remove(job)
+
+    store(args.storage_file, current_jobs)
+    print('Removed %i jobs successfully.' % len(completed_scripts))
 
 
 def status(args):

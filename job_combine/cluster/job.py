@@ -30,14 +30,8 @@ class Job:
         self.params = tuple(sorted(params, key=lambda x: x[0]))
         self.manager_name = manager_name
 
-    def __hash__(self):
+    def key(self):
         return hash((self.manager_name, self.params))
-
-    def __eq__(self, other):
-        return (self.manager_name, self.params) == (other.manager_name, other.params)
-
-    def __ne__(self, other):
-        return not (self == other)
 
     def __repr__(self):
         return '(%s, %s, %s, %s, %s, %s, %s)' \
