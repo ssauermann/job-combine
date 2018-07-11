@@ -29,12 +29,18 @@ def read_args():
     parser_queue = subparsers.add_parser('queue',
                                          help='Performs the partitioning and combination of the currently stored jobs')
     parser_add = subparsers.add_parser('add', help='Add a job for combination with the other stored jobs')
+    parser_remove = subparsers.add_parser('remove', help='Remove a job from the stored jobs')
+    parser_restart = subparsers.add_parser('restart',
+                                           help='Removes all completed job from the stored jobs so the failed '
+                                                'jobs can be recombined and restarted by `queue`')
     parser_status = subparsers.add_parser('status', help='Displays information about the currently stored jobs and'
                                                          ' which can be combined')
     parser_clear = subparsers.add_parser('clear', help='Removes all currently stored jobs')
 
     parser_queue.set_defaults(func=queue)
     parser_add.set_defaults(func=add)
+    parser_remove.set_defaults(func=remove)
+    parser_restart.set_defaults(func=remove_completed)
     parser_status.set_defaults(func=status)
     parser_clear.set_defaults(func=clear)
 
@@ -48,6 +54,24 @@ def read_args():
     parser_add.add_argument('-w', '--workload-manager', help='Specifies the type of the job file. Will be inferred from'
                                                              ' the directives in the file, if not set. Valid values are'
                                                              ': [%s]' % (', '.join(cjob.available_managers())))
+
+    # Arguments for 'remove'
+    parser_remove.add_argument('job_file', help='Job file containing a single task')
+    parser_remove.add_argument('-w', '--workload-manager',
+                               help='Specifies the type of the job file. Will be inferred from'
+                                    ' the directives in the file, if not set. Valid values are'
+                                    ': [%s]' % (', '.join(cjob.available_managers())))
+
+    # Arguments for 'restart'
+    parser_restart.add_argument('-w', '--workload-manager',
+                                help='Specifies the type of the job files. Will be inferred from'
+                                     ' the directives in the files, if not set. Valid values are'
+                                     ': [%s]' % (', '.join(cjob.available_managers())))
+    parser_restart.add_argument('-d', '--directory', default='scripts',
+                                help='Directory to store the combined scripts in'
+                                     ' [default: %(default)s]')
+    parser_restart.add_argument('--adapt-time', default=1, type=float,
+                                help='Value to multiply the original time restraints with. [default: %(default)f]')
 
     # Arguments for 'queue'
     parser_queue.add_argument('--dispatch', action='store_true', help='Dispatch the combined scripts immediately after'
@@ -131,8 +155,8 @@ def combine(jobs):
             c_script += ' >%s' % stdout  # pipe stdout
         if job.stderr is not None:
             c_script += ' 2>%s' % stderr  # pipe stderr
-        c_script += 'echo %s >> $(cwd)/done' % job.file
-        c_script += '\n\n'
+        c_script += '\n'
+        c_script += 'echo %s >> $(cwd)/done\n\n' % job.file
 
     return c_job, c_script
 
@@ -281,6 +305,11 @@ def remove_completed(args):
     for script_f in completed_scripts:
         job = cjob.Job.from_file(script_f, args.workload_manager)
         current_jobs[job.key()].remove(job)
+
+    if args.adapt_time != 1:
+        for similar_jobs in current_jobs.values():
+            for job in similar_jobs:
+                job.time *= args.adapt_time
 
     store(args.storage_file, current_jobs)
     print('Removed %i jobs successfully.' % len(completed_scripts))
