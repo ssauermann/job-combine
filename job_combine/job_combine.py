@@ -97,7 +97,7 @@ def store(file, dic):
     else:
         file_abs = file
     with open(file_abs, 'wb+') as f:
-        pickle.dump(dic, f, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(dic, f, protocol=2)  # Highest protocol supported by all python versions >= 2.3
 
 
 def combine(jobs):
