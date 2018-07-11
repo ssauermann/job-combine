@@ -16,6 +16,8 @@ Make sure `~/.local/bin` is on your `PATH` and `~/.local/lib/pythonX.Y/site-pack
 See the full help by executing `job-combine -h` or `job-combine <mode> -h`
 - Adding job files:
 `job-combine add <path to job file>`
+- Removing job files:
+`job-combine remove <path to job file>`
 - Remove all currently stored job files:
 `job-combine clear`
 - Print short overview over stored job files:
@@ -26,7 +28,9 @@ See the full help by executing `job-combine -h` or `job-combine <mode> -h`
     - `-m <minimum run time for a single combined job>`
     - `-p <number of combined jobs to target>`
     - `--dispatch` Queue combined jobs directly after creation
-    
+- Remove all jobs that ran successfully from the storage:
+`job-combine restart`
+    - `--adapt-time <multiplier>` Multiple the times of the scripts that have not yet been completed by this amount
 ## Example usage
 1. Create job scripts programmatically and call `job-combine -s ~/job.storage add <jobfile>` for each one.
 2. Combine the scripts considering the following constraints:
