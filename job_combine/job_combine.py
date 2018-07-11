@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import timedelta
 from difflib import SequenceMatcher
 from os import path
+from json import JSONDecodeError
 
 import jsonpickle
 
@@ -110,9 +111,9 @@ def load(file):
         file_abs = file
     with open(file_abs, 'a+') as f:
         try:
-            json = f.readlines()
+            json = f.read()
             return jsonpickle.decode(json)
-        except EOFError:
+        except JSONDecodeError:
             return defaultdict(list)
 
 
