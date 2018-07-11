@@ -300,7 +300,8 @@ def remove_completed(args):
     for root, dirs, files in os.walk(script_dir):
         for f in files:
             if f == 'done':
-                completed_scripts += open(path.join(root, f)).readlines()
+                with open(path.join(root, f)) as file:
+                    completed_scripts += [line.strip() for line in file]
 
     for script_f in completed_scripts:
         job = cjob.Job.from_file(script_f, args.workload_manager)

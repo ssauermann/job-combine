@@ -33,6 +33,15 @@ class Job:
     def key(self):
         return hash((self.manager_name, self.params))
 
+    def __hash__(self):
+        return hash(self.file)
+
+    def __eq__(self, other):
+        return self.file == other.file
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def __repr__(self):
         return '(%s, %s, %s, %s, %s, %s, %s)' \
                % (self.name, str(self.time), self.file, self.directory, self.stdout, self.stderr, self.manager_name)
