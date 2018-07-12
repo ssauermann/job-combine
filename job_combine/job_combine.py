@@ -151,7 +151,7 @@ def combine(jobs):
     c_job = cjob.Job(None, name, None, time, stdout, stderr, params, manager)
 
     # create script for combined job that calls every original script in its working directory
-    c_script = 'cwd=$(pwd)'
+    c_script = 'cwd=$(pwd)\n'
     for job in jobs:
         c_script += 'cd "%s"\n' % job.directory  # change to working directory
         c_script += '"%s"' % job.file  # execute script (file path is absolute)
@@ -160,7 +160,7 @@ def combine(jobs):
         if job.stderr is not None:
             c_script += ' 2>%s' % stderr  # pipe stderr
         c_script += '\n'
-        c_script += 'echo %s >> $(cwd)/done\n\n' % job.file
+        c_script += 'echo %s >> $cwd/done\n\n' % job.file
 
     return c_job, c_script
 
