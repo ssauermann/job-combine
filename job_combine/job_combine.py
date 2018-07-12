@@ -111,6 +111,7 @@ def load(file):
         file_abs = file
     with open(file_abs, 'a+') as f:
         try:
+            f.seek(0)
             json = f.read()
             return jsonpickle.decode(json)
         except JSONDecodeError:
@@ -325,7 +326,9 @@ def status(args):
 
     times = []
     for k, v in jobs.items():
-        time_format = k.manager().time_formats[0]
+        if len(v) == 0:
+            continue
+        time_format = v[0].manager().time_formats[0]
         time_sum = cjob.sum_times(v)
         times.append(time_parser.str_from_timedelta(time_sum, time_format))
 
