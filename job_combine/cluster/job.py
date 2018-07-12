@@ -1,4 +1,5 @@
 """Job that can be dispatched on a cluster"""
+from collections import namedtuple
 import re
 from datetime import timedelta
 from os import path
@@ -30,11 +31,14 @@ class Job:
         self.params = tuple(sorted(params, key=lambda x: x[0]))
         self.manager_name = manager_name
 
+    def key(self):
+        return self.manager_name, self.params
+
     def __hash__(self):
-        return hash((self.manager_name, self.params))
+        return hash(self.file)
 
     def __eq__(self, other):
-        return (self.manager_name, self.params) == (other.manager_name, other.params)
+        return self.file == other.file
 
     def __ne__(self, other):
         return not (self == other)

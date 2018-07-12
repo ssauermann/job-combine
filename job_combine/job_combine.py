@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
@@ -29,12 +29,18 @@ def read_args():
     parser_queue = subparsers.add_parser('queue',
                                          help='Performs the partitioning and combination of the currently stored jobs')
     parser_add = subparsers.add_parser('add', help='Add a job for combination with the other stored jobs')
+    parser_remove = subparsers.add_parser('remove', help='Remove a job from the stored jobs')
+    parser_restart = subparsers.add_parser('restart',
+                                           help='Removes all completed job from the stored jobs so the failed '
+                                                'jobs can be recombined and restarted by `queue`')
     parser_status = subparsers.add_parser('status', help='Displays information about the currently stored jobs and'
                                                          ' which can be combined')
     parser_clear = subparsers.add_parser('clear', help='Removes all currently stored jobs')
 
     parser_queue.set_defaults(func=queue)
     parser_add.set_defaults(func=add)
+    parser_remove.set_defaults(func=remove)
+    parser_restart.set_defaults(func=remove_completed)
     parser_status.set_defaults(func=status)
     parser_clear.set_defaults(func=clear)
 
@@ -48,6 +54,24 @@ def read_args():
     parser_add.add_argument('-w', '--workload-manager', help='Specifies the type of the job file. Will be inferred from'
                                                              ' the directives in the file, if not set. Valid values are'
                                                              ': [%s]' % (', '.join(cjob.available_managers())))
+
+    # Arguments for 'remove'
+    parser_remove.add_argument('job_file', help='Job file containing a single task')
+    parser_remove.add_argument('-w', '--workload-manager',
+                               help='Specifies the type of the job file. Will be inferred from'
+                                    ' the directives in the file, if not set. Valid values are'
+                                    ': [%s]' % (', '.join(cjob.available_managers())))
+
+    # Arguments for 'restart'
+    parser_restart.add_argument('-w', '--workload-manager',
+                                help='Specifies the type of the job files. Will be inferred from'
+                                     ' the directives in the files, if not set. Valid values are'
+                                     ': [%s]' % (', '.join(cjob.available_managers())))
+    parser_restart.add_argument('-d', '--directory', default='scripts',
+                                help='Directory the combined scripts are stored in'
+                                     ' [default: %(default)s]')
+    parser_restart.add_argument('--adapt-time', default=1, type=float,
+                                help='Value to multiply the original time restraints with. [default: %(default)f]')
 
     # Arguments for 'queue'
     parser_queue.add_argument('--dispatch', action='store_true', help='Dispatch the combined scripts immediately after'
@@ -97,7 +121,7 @@ def store(file, dic):
     else:
         file_abs = file
     with open(file_abs, 'wb+') as f:
-        pickle.dump(dic, f, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(dic, f, protocol=2)  # Highest protocol supported by all python versions >= 2.3
 
 
 def combine(jobs):
@@ -123,7 +147,7 @@ def combine(jobs):
     c_job = cjob.Job(None, name, None, time, stdout, stderr, params, manager)
 
     # create script for combined job that calls every original script in its working directory
-    c_script = ''
+    c_script = 'cwd=$(pwd)\n'
     for job in jobs:
         c_script += 'cd "%s"\n' % job.directory  # change to working directory
         c_script += '"%s"' % job.file  # execute script (file path is absolute)
@@ -131,7 +155,8 @@ def combine(jobs):
             c_script += ' >%s' % stdout  # pipe stdout
         if job.stderr is not None:
             c_script += ' 2>%s' % stderr  # pipe stderr
-        c_script += '\n\n'
+        c_script += '\n'
+        c_script += 'echo %s >> $cwd/done\n\n' % job.file
 
     return c_job, c_script
 
@@ -214,6 +239,9 @@ def queue(args):
     print('Combining scripts...')
 
     for similar_jobs in current_jobs.values():
+        if len(similar_jobs) == 0:
+            continue
+
         # partition jobs based on constraints
         part = partition(similar_jobs, max_time, min_time, args.parallel, args.break_max)
         # combine scripts in same partition
@@ -248,10 +276,51 @@ def add(args):
 
     job = cjob.Job.from_file(args.job_file, args.workload_manager)
     os.chmod(job.file, os.stat(job.file).st_mode | 0o111)  # set script executable for everyone
-    current_jobs[job].append(job)
+    current_jobs[job.key()].append(job)
 
     store(args.storage_file, current_jobs)
     print('Added job successfully.')
+
+
+def remove(args):
+    current_jobs = load(args.storage_file)
+
+    job = cjob.Job.from_file(args.job_file, args.workload_manager)
+    current_jobs[job.key()].remove(job)
+
+    store(args.storage_file, current_jobs)
+    print('Removed job successfully.')
+
+
+def remove_completed(args):
+    current_jobs = load(args.storage_file)
+    script_dir = args.directory
+
+    completed_scripts = []
+    for root, dirs, files in os.walk(script_dir):
+        for f in files:
+            if f == 'done':
+                with open(path.join(root, f)) as file:
+                    completed_scripts += [line.strip() for line in file]
+
+    removed_counter = 0
+    for script_f in completed_scripts:
+        if script_f == '':
+            continue
+        job = cjob.Job.from_file(script_f, args.workload_manager)
+        try:
+            current_jobs[job.key()].remove(job)
+            removed_counter += 1
+        except ValueError:
+            pass  # Script was already removed
+
+    if args.adapt_time != 1:
+        for similar_jobs in current_jobs.values():
+            for job in similar_jobs:
+                job.time *= args.adapt_time
+
+    store(args.storage_file, current_jobs)
+    print('Removed %i jobs successfully; %i jobs remaining.' % (removed_counter, len(current_jobs)))
 
 
 def status(args):
@@ -260,7 +329,9 @@ def status(args):
 
     times = []
     for k, v in jobs.items():
-        time_format = k.manager().time_formats[0]
+        if len(v) == 0:
+            continue
+        time_format = v[0].manager().time_formats[0]
         time_sum = cjob.sum_times(v)
         times.append(time_parser.str_from_timedelta(time_sum, time_format))
 
