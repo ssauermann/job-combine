@@ -7,23 +7,23 @@ job_c = Job('file_c', 'job-c', 'path/to/dir_c', timedelta(minutes=30), 'c.out', 
 
 jobs = defaultdict(list)
 
-jobs[job_a].append(job_a)
-jobs[job_b].append(job_b)
-jobs[job_c].append(job_c)
+jobs[job_a.key()].append(job_a)
+jobs[job_b.key()].append(job_b)
+jobs[job_c.key()].append(job_c)
 
 assert len(jobs) == 1
-assert len(jobs[job_a]) == 3
+assert len(jobs[job_a.key()]) == 3
 
 
 def test_partition_no_constraints():
-    part = partition(jobs[job_a])
+    part = partition(jobs[job_a.key()])
     assert len(part) == 1
     assert len(part[0]) == 3
     assert sum_times(part[0]) == timedelta(minutes=60)
 
 
 def test_partition_parallel():
-    part = partition(jobs[job_a], parallel=3)
+    part = partition(jobs[job_a.key()], parallel=3)
     assert len(part) == 3
     assert len(part[0]) == 1
     assert len(part[1]) == 1
@@ -31,7 +31,7 @@ def test_partition_parallel():
 
 
 def test_partition_max_time():
-    part = partition(jobs[job_a], max_time=timedelta(minutes=40))
+    part = partition(jobs[job_a.key()], max_time=timedelta(minutes=40))
     assert len(part) == 2
     assert sum_times(part[0]) == timedelta(minutes=30)
     assert sum_times(part[1]) == timedelta(minutes=30)
