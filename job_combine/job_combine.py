@@ -68,7 +68,7 @@ def read_args():
                                      ' the directives in the files, if not set. Valid values are'
                                      ': [%s]' % (', '.join(cjob.available_managers())))
     parser_restart.add_argument('-d', '--directory', default='scripts',
-                                help='Directory to store the combined scripts in'
+                                help='Directory the combined scripts are stored in'
                                      ' [default: %(default)s]')
     parser_restart.add_argument('--adapt-time', default=1, type=float,
                                 help='Value to multiply the original time restraints with. [default: %(default)f]')
@@ -303,9 +303,16 @@ def remove_completed(args):
                 with open(path.join(root, f)) as file:
                     completed_scripts += [line.strip() for line in file]
 
+    removed_counter = 0
     for script_f in completed_scripts:
+        if script_f == '':
+            continue
         job = cjob.Job.from_file(script_f, args.workload_manager)
-        current_jobs[job.key()].remove(job)
+        try:
+            current_jobs[job.key()].remove(job)
+            removed_counter += 1
+        except ValueError:
+            pass  # Script was already removed
 
     if args.adapt_time != 1:
         for similar_jobs in current_jobs.values():
@@ -313,7 +320,7 @@ def remove_completed(args):
                 job.time *= args.adapt_time
 
     store(args.storage_file, current_jobs)
-    print('Removed %i jobs successfully.' % len(completed_scripts))
+    print('Removed %i jobs successfully; %i jobs remaining.' % (removed_counter, len(current_jobs)))
 
 
 def status(args):
