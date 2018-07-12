@@ -1,4 +1,5 @@
 """Job that can be dispatched on a cluster"""
+from collections import namedtuple
 import re
 from datetime import timedelta
 from os import path
@@ -31,7 +32,7 @@ class Job:
         self.manager_name = manager_name
 
     def key(self):
-        return hash((self.manager_name, self.params))
+        return self.manager_name, self.params
 
     def __hash__(self):
         return hash(self.file)
