@@ -15,5 +15,5 @@ setup(
         'console_scripts': [
             'job-combine = job_combine.job_combine:main',
         ],
-    }, test_requires=['pytest'], install_requires=['jsonpickle']
+    }, test_requires=['pytest'], install_requires=[]
 )

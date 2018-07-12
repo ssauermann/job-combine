@@ -3,14 +3,12 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import pickle
 import sys
 from collections import defaultdict
 from datetime import timedelta
 from difflib import SequenceMatcher
 from os import path
-from json import JSONDecodeError
-
-import jsonpickle
 
 from job_combine.cluster import job as cjob
 from job_combine.utils import paths, time_parser
@@ -109,12 +107,11 @@ def load(file):
         file_abs = path.join(paths.abs_folder(), file)
     else:
         file_abs = file
-    with open(file_abs, 'a+') as f:
+    with open(file_abs, 'ab+') as f:
         try:
             f.seek(0)
-            json = f.read()
-            return jsonpickle.decode(json)
-        except JSONDecodeError:
+            return pickle.load(f)
+        except EOFError:
             return defaultdict(list)
 
 
@@ -123,9 +120,8 @@ def store(file, dic):
         file_abs = path.join(paths.abs_folder(), file)
     else:
         file_abs = file
-    with open(file_abs, 'w+') as f:
-        json = jsonpickle.encode(dic)
-        f.write(json)
+    with open(file_abs, 'wb+') as f:
+        pickle.dump(dic, f, protocol=2)  # Highest protocol supported by all python versions >= 2.3
 
 
 def combine(jobs):
